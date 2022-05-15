@@ -105,43 +105,33 @@ class Solution:
             self.fitness = None
             break
 
-
     def calc_fitness(self):
-        if self.fitness != None: return self.fitness
+        if self.fitness is not None:
+            return self, self.fitness
 
         def check_column(j):
-            elements_in_column = []
-            for i in range(SIZE):
-                elements_in_column.append(self.board[i][j])
-            unique = set(elements_in_column)
-            return len(unique)
+            unique_elements_in_clumn = set([self.board[i][j] for i in range(SIZE)])
+            return SIZE - len(unique_elements_in_clumn)
 
         def check_ineq(i, j):
-            if (i, j) not in INEQUALITY: return 0
+            if (i, j) not in INEQUALITY:
+                return 0
+
             count = 0
             for t in INEQUALITY[(i, j)]:
-                if self.board[i][j] > self.board[t[0]][t[1]]:
+                if self.board[i][j] < self.board[t[0]][t[1]]:
                     count += 1
             return count
 
         total = 0
         for i in range(SIZE):
+            total += check_column(i)
             for j in range(SIZE):
                 if (i, j) in INEQUALITY:
                     total += check_ineq(i, j)
 
-        for j in range(SIZE):
-            total += check_column(j)
-
-        # print(columns)
         self.fitness = total
-
-        # TEST FITNESS FUNCTION CORRECTION
-        # print(self.fitness)
-        # self.print_board()
-        # exit(1)
-
-        return self.fitness
+        return self, self.fitness
 
 
 class Futoshiki:
@@ -151,11 +141,23 @@ class Futoshiki:
         self.random_rate = random_rate
         self.trials = int(gen_limit / restart_threshold)
         self.restart_threshold = restart_threshold
-
+        self.mating_pool = []
         self.population = [Solution() for _ in range(population)]
         self.fitness_sum = sum([sol.calc_fitness() for sol in self.population])
-        self.prob_array = [sol.calc_fitness() / self.fitness_sum for sol in self.population]
+        self.prob_array = [sol.calc_fitness()[0] / self.fitness_sum for sol in self.population]
 
+    def calculate_fitness(self):
+        mating_pool = []
+        all_fitness = []
+        for s in self.population:
+            sol, fitness = s.calc_fitness()
+            mating_pool.append(sol)
+            all_fitness.append(fitness)
+        fitness_sum = sum(all_fitness)
+        for i in range(len(all_fitness)):
+            all_fitness[i] = 1 - (all_fitness[i] / fitness_sum)
+        self.mating_pool = mating_pool
+        self.prob_array = all_fitness
 
     def worst_fitness(self):
         return min([sol.calc_fitness() for sol in self.population])
@@ -200,12 +202,12 @@ class Futoshiki:
         board = parent1.board[:rows] + parent2.board[rows:]
         return Solution(board)
 
-    # def check_how_many_equal_best(self, best: Solution):
-    #     count = 0
-    #     for sol in self.population:
-    #         if sol == best:
-    #             count += 1
-    #     return count - 1
+    def check_how_many_equal_best(self, best: Solution):
+        count = 0
+        for sol in self.population:
+            if sol == best:
+                count += 1
+        return count - 1
 
 
     def mutate(self, sol):
@@ -229,8 +231,10 @@ class Futoshiki:
         best = Solution()
         gen = 0
 
-        while True:
-            if gen >= self.restart_threshold: return best
+        while gen < self.restart_threshold:
+
+
+
             current_best = self.get_best(self.population)
             if current_best.calc_fitness() == TARGET_SCORE:
                 return current_best
@@ -238,6 +242,8 @@ class Futoshiki:
                 best = current_best
                 print(f'at gen {gen} new best {best.calc_fitness()}, target {TARGET_SCORE}:')
                 best.print_board()
+
+            print(self.check_how_many_equal_best(current_best))
 
             new_population = self.replicate_elite()
 
@@ -279,11 +285,23 @@ class Futoshiki:
 
 
 parse_input()
-f = Futoshiki(population=100, replication_rate=0.01, random_rate=0.01, gen_limit=50000, restart_threshold=5000)
-solution = f.run()
-if solution:
-    print(f'Final solution:')
-    solution.print_board()
-else:
-    print('No solution found.')
+
+a = [1, 2]
+p = [0.1, 1]
+ones = 1
+twos = 1
+while True:
+    c = random.choices(a, p)[0]
+    if c == 2:
+        twos += 1
+    else:
+        ones += 1
+    print(f'ones to twos ratio:\n{ones/twos}')
+# f = Futoshiki(population=100, replication_rate=0.01, random_rate=0.01, gen_limit=1000, restart_threshold=1000)
+# solution = f.run()
+# if solution:
+#     print(f'Final solution:')
+#     solution.print_board()
+# else:
+#     print('No solution found.')
 
